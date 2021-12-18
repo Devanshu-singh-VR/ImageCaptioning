@@ -1,9 +1,7 @@
 import torch
-from tqdm import tqdm
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.transforms as transforms
-from torch.utils.tensorboard import SummaryWriter
 from data import get_loader
 from model import CNNtoRNN
 
@@ -26,48 +24,38 @@ def train():
     )
 
     torch.backends.cudnn.benchmark = True
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Hyperparameters
     embed_size = 256
     hidden_size = 256
     num_layers = 1
     learning_rate = 3e-4
-    num_epochs = 100
-
-    # for tensorboard
-    writer = SummaryWriter("runs/flickr")
-    step = 0
+    num_epochs = 20
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # initialize model, loss etc
     model = CNNtoRNN(embed_size, hidden_size, dataset, num_layers, device).to(device)
-    criterion = nn.CrossEntropyLoss(ignore_index=dataset.vocab.stoi["<PAD>"])
+    loss_f = nn.CrossEntropyLoss(ignore_index=dataset.vocab.stoi["<PAD>"])
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-
 
     model.train()
 
     for epoch in range(num_epochs):
-        # Uncomment the line below to see a couple of test cases
-        # print_examples(model, device, dataset)
+        print(f"Epochs[{epoch}/{num_epochs}]")
         losses = []
-        for idx, (imgs, captions) in tqdm(
-            enumerate(train_loader), total=len(train_loader), leave=False
-        ):
+        for idx, (imgs, captions) in enumerate(train_loader):
             imgs = imgs.to(device)
             captions = captions.to(device)
-
             outputs = model(imgs, captions)
 
-            loss = criterion(
+            optimizer.zero_grad()
+
+            loss = loss_f(
                 outputs[1:].reshape(-1, outputs.shape[2]), captions[1:].reshape(-1)
             )
             losses.append(loss.item())
-            writer.add_scalar("Training loss", loss.item(), global_step=step)
-            step += 1
 
-            optimizer.zero_grad()
-            loss.backward(loss)
+            loss.backward()
             optimizer.step()
 
             # test the caption model
