@@ -7,14 +7,13 @@ class EncoderCNN(nn.Module):
     def __init__(self, hidden_size, train_CNN=False):
         super(EncoderCNN, self).__init__()
         self.train_CNN = train_CNN
-        self.inception = models.vgg16(pretrained=False)
-        self.inception.fc = nn.Linear(self.inception.fc.in_features, hidden_size)
+        self.vgg = models.vgg16(pretrained=False)
+        self.vgg.classifier[6] = nn.Linear(4096, hidden_size)
         self.relu = nn.ReLU()
-        self.times = []
         self.dropout = nn.Dropout(0.5)
 
     def forward(self, images):
-        features = self.inception(images)
+        features = self.vgg(images)
         return self.dropout(self.relu(features))
 
 
